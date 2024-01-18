@@ -5,29 +5,23 @@
 
 using namespace std;
 
-class Coordinate {
-public:
-    int x;
-    int y;
-    
-
-};
-
-istream& operator>> (istream& input, Coordinate& p)
-{
-    input >> p.x;
-    input.ignore(1);
-    input >> p.y;
-    return input;
-}
-
 class SuperObject
 {
 public:
     char icon;
-    Coordinate coord;
-    SuperObject(Coordinate coordP, const char iconP) :coord{coordP}, icon{ iconP } {}
-    SuperObject() : SuperObject(Coordinate{ rand() % 20 + 1, rand() % 20 + 1 }, '!') {};
+    int x;
+    int y;
+    SuperObject(int xP, int yP, const char iconP) : x{ xP }, y{ yP }, icon { iconP } {}
+    SuperObject() : SuperObject(rand() % 20 + 1, rand() % 20 + 1, '!') {};
+};
+
+class Box {
+public:
+    int x;
+    int y;
+    int speed;
+    int into;
+
 };
 
 class Entity : SuperObject
@@ -51,6 +45,24 @@ public:
         : SuperObject(xP, yP, iconP), AddHealth(addHealth), AddProtection(addProtection), AddDamage(addDamage) {
     }
     Item() : SuperObject(rand() % 20 + 1, rand() % 20 + 1, '$'), AddHealth{ 0 }, AddProtection{ 0 }, AddDamage{ 0 } {}
+};
+
+class Box {
+public:
+    int x;
+    int y;
+    int speed;
+    SuperObject* into;
+
+    void put(SuperObject* obj) {
+        x = obj->x;
+        y = obj->y;
+        into = obj;
+    }
+
+    SuperObject* get() {
+        return into;
+    }
 };
 
 class Player : Entity {
@@ -138,26 +150,32 @@ void movePlayer(char move) {
     }
 }
 
-int main()
-{
-    int getch();
-    char move;
-    Sleep(1000);
-    system("cls");
-    SuperObject me{ 1,1,'@' };
-    pointArr.push_back(me);
-    //Добавление элементов помимо игрока
-    for (int i = 0; i < 5; i++) {
-        SuperObject temp{ (rand() % HIGHT - 2) + 1, (rand() % WIDTH - 2) + 1, '$' };
-        pointArr.push_back(temp);
+void collision_handler(Player& player, Box& box) {
+    SuperObject* obj = box.get();
+    if (obj != nullptr) {
+        // Обработка столкновения
+        if (dynamic_cast<Item*>(obj) != nullptr) {
+            player.inventory.push_back(*dynamic_cast<Item*>(obj));
+        }
+        box.put(nullptr);
     }
-    bool main_flag = true;
-
-    while (main_flag)
-    {
-        system("cls");
-        convert();
-        print();
-        if (!(move_flag)) {
-            cout << "Invalid move!";
-            move
+}
+//int main()
+//{
+//    int getch();
+//    char move;
+//    Sleep(1000);
+//    system("cls");
+//    SuperObject me{ 1,1,'@' };
+//    pointArr.push_back(me);
+//    //Добавление элементов помимо игрока
+//    for (int i = 0; i < 5; i++) {
+//        SuperObject temp{ (rand() % HIGHT - 2) + 1, (rand() % WIDTH - 2) + 1, '$' };
+//        pointArr.push_back(temp);
+//    }
+//    bool main_flag = true;
+//
+//    while (main_flag)
+//    {
+//    };
+//}
