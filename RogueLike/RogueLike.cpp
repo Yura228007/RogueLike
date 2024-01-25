@@ -2,6 +2,7 @@
 #include <Windows.h> 
 #include <vector> 
 #include <conio.h>
+#include <list>
 
 using namespace std;
 
@@ -11,17 +12,48 @@ public:
     char icon;
     int x;
     int y;
-    SuperObject(int xP, int yP, const char iconP) : x{ xP }, y{ yP }, icon { iconP } {}
-    SuperObject() : SuperObject(rand() % 20 + 1, rand() % 20 + 1, '!') {};
+    int direct;
+    int speed;
+    SuperObject(int xP, int yP, const char iconP, int speedP) : x{ xP }, y{ yP }, icon{ iconP }, speed{ speedP } {}
+    SuperObject() : SuperObject(rand() % 20 + 1, rand() % 20 + 1, '!', 0) {};
 };
 
+template <typename T = SuperObject>
 class Box {
 public:
     int x;
     int y;
     int speed;
-    int into;
+    T* into;
+    int direct;
 
+    Box(T& intoP) : x(intoP->x), y(intoP->y), speed{ intoP->speed }, into(intoP->into), direct(intoP->into) {}
+    Box() : Box(0, 0, 0, nullptr, 0) {};
+
+    void put(T* obj) {
+        x = obj->x;
+        y = obj->y;
+        into = obj;
+        direct = obj->direct;
+    }
+
+    T* get() {
+        return into;
+    }
+};
+
+list <Box<SuperObject>> box;
+
+class Item : SuperObject {
+public:
+    string title;
+    int AddHealth;
+    int AddDamage;
+    int AddProtection;
+    Item(int xP, int yP, const char iconP, int speedP, int addHealth, int addProtection, int addDamage)
+        : SuperObject(xP, yP, iconP, speedP), AddHealth(addHealth), AddProtection(addProtection), AddDamage(addDamage) {
+    }
+    Item() : SuperObject(rand() % 20 + 1, rand() % 20 + 1, '$', 0), AddHealth{ 0 }, AddProtection{ 0 }, AddDamage{ 0 } {}
 };
 
 class Entity : SuperObject
@@ -30,47 +62,11 @@ public:
     int health;
     int damage;
     int protection;
-    Entity(int xP, int yP, const char iconP, int healthP, int damageP, int protectionP) : SuperObject(xP, yP, iconP), health{ healthP }, damage{ damageP }, protection{ protectionP } {}
+    vector <Item> inventory;
+    Entity(int xP, int yP, const char iconP, int speedP, int healthP, int damageP, int protectionP) : SuperObject(xP, yP, iconP, speedP), health{ healthP }, damage{ damageP }, protection{ protectionP } {}
     Entity() : SuperObject(), health{ 100 }, damage{ 10 }, protection{ 5 } {}
 };
 
-
-class Item : SuperObject {
-public:
-    string title;
-    int AddHealth;
-    int AddDamage;
-    int AddProtection;
-    Item(int xP, int yP, const char iconP, int addHealth, int addProtection, int addDamage)
-        : SuperObject(xP, yP, iconP), AddHealth(addHealth), AddProtection(addProtection), AddDamage(addDamage) {
-    }
-    Item() : SuperObject(rand() % 20 + 1, rand() % 20 + 1, '$'), AddHealth{ 0 }, AddProtection{ 0 }, AddDamage{ 0 } {}
-};
-
-class Box {
-public:
-    int x;
-    int y;
-    int speed;
-    SuperObject* into;
-
-    void put(SuperObject* obj) {
-        x = obj->x;
-        y = obj->y;
-        into = obj;
-    }
-
-    SuperObject* get() {
-        return into;
-    }
-};
-
-class Player : Entity {
-public:
-    vector <Item> inventory;
-    Player(int xP, int yP, int healthP, int damageP, int protectionP) : Entity(xP, yP, '@', healthP, damageP, protectionP) {};
-    Player() : Entity() {};
-};
 
 int fps = 100;
 int latency = 1000 / fps;
@@ -150,32 +146,34 @@ void movePlayer(char move) {
     }
 }
 
-void collision_handler(Player& player, Box& box) {
-    SuperObject* obj = box.get();
-    if (obj != nullptr) {
-        // Обработка столкновения
-        if (dynamic_cast<Item*>(obj) != nullptr) {
-            player.inventory.push_back(*dynamic_cast<Item*>(obj));
-        }
-        box.put(nullptr);
-    }
-}
-//int main()
-//{
-//    int getch();
-//    char move;
-//    Sleep(1000);
-//    system("cls");
-//    SuperObject me{ 1,1,'@' };
-//    pointArr.push_back(me);
-//    //Добавление элементов помимо игрока
-//    for (int i = 0; i < 5; i++) {
-//        SuperObject temp{ (rand() % HIGHT - 2) + 1, (rand() % WIDTH - 2) + 1, '$' };
-//        pointArr.push_back(temp);
+//void collision_handler(Player& player, Box& box) {
+//    SuperObject* obj = box.get();
+//    if (obj != nullptr) {
+//        // Обработка столкновения
+//        if (dynamic_cast<Item*>(obj) != nullptr) {
+//            player.inventory.push_back(*dynamic_cast<Item*>(obj));
+//        }
+//        box.put(nullptr);
 //    }
-//    bool main_flag = true;
-//
-//    while (main_flag)
-//    {
-//    };
 //}
+
+
+int main()
+{
+    int getch();
+    char move;
+    Sleep(1000);
+    system("cls");
+    SuperObject me{ 1,1,'@', 0 };
+    pointArr.push_back(me);
+    //Добавление элементов помимо игрока
+    for (int i = 0; i < 5; i++) {
+        SuperObject temp{ (rand() % HIGHT - 2) + 1, (rand() % WIDTH - 2) + 1, '$' , 0};
+        pointArr.push_back(temp);
+    }
+    bool main_flag = true;
+
+    while (main_flag)
+    {
+    };
+}
