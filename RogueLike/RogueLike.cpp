@@ -2,20 +2,124 @@
 #include <windows.h>
 #include <list>
 #include <conio.h>
-//#include "Coord.h"
-//#include "Point.h"
-//#include "SuperObject.h"
-#include "Source.cpp"
-
-
 using namespace std;
 char emptyChar = '.';
 
+class SuperObject;
+class Coord
+{
+public:
+    int x = 0;
+    int y = 0;
+    Coord(int xP, int yP) :
+        x{ xP }, y{ yP } {};
+    Coord& operator()(int xP, int yP)
+    {
+        x = xP; y = yP;
+        return *this;
+    };
+};
+class Point
+{
+public:
+    char icon = emptyChar;
+    Coord coord;
+    SuperObject* into;
+    Point() : icon{ emptyChar }, coord(0, 0), into{ nullptr } {};
+    Point(Coord coordP) : coord{ coordP }, into{ nullptr } {};
+    Point(Coord coordP, SuperObject* intoP, char iconP = emptyChar) :
+        icon{ iconP }, coord(coordP), into{ intoP } {};
+
+    Point* operator()(char iconP)
+    {
+        icon = iconP;
+        return this;
+    }
+
+    void clear(int xP = 0, int yP = 0)
+    {
+        coord(0, 0);
+        icon = emptyChar;
+        into = nullptr;
+
+    }
+};
 ostream& operator<<(ostream& out, Point& obj)
 {
     return out << obj.icon;
 }
 
+class SuperObject
+{
+    Point* place;
+public:
+    char icon;
+    int speed{ 1 }; // квантификатор скорости
+    bool ismov{ false }; // движется объект или нет
+    int direct{ 0 };
+    SuperObject() :
+        place{ nullptr }, speed{ 0 }, direct{ 0 }, icon{ emptyChar } {}
+    SuperObject(Point* placeP, int speedP = 0, int directP = 0, char iconP = emptyChar) :
+        speed{ speedP }, direct{ directP }, icon{ iconP } {
+        link(placeP);
+    }
+
+    virtual Coord* getCoord()
+    {
+        return &place->coord;
+    }
+
+    virtual void link(Point* p)
+    {
+        if (place!= nullptr)
+            place->into = nullptr;
+        place = p;
+        p->into = this;
+    }
+    virtual int collision_hanlder(SuperObject* obj)
+    {
+
+        return 0;
+    };
+    virtual Coord move() //возвращает координаты следующего местоположения. не меняет текущие параметры
+    {
+        Coord tcoord(place->coord);
+        tcoord = place->coord;
+        switch (direct) {
+        case(0):
+            break;
+        case(1):
+            tcoord.y -= 1;
+            break;
+        case(2):
+            tcoord.x += 1;
+            break;
+        case(3):
+            tcoord.y += 1;
+            break;
+        case(4):
+            tcoord.x -= 1;
+            break;
+        }
+        return tcoord;
+    }
+};
+
+//----- env var -----
+
+const int HIGH = 15;
+const int WIDTH = 10;
+//char emptyChar = '.';
+
+int fps = 4;
+int latency = 1000 / fps;
+
+Point display[HIGH][WIDTH]{};
+list<SuperObject*> objects;
+
+char keyboardPress;
+bool main_flag = true;
+//===== env var =====
 void displayClearField()
 {
     for (int i = 0; i < HIGH; ++i)
@@ -57,7 +161,8 @@ public:
     int life = 1;
 
     Entity() : SuperObject() {}
-    Entity(Point* placeP, char iconP, int lifeP, int speedP = 0, int directP = 0) : SuperObject(placeP, speedP, directP, iconP), life{ lifeP } {}
+    Entity(Point* placeP, char iconP, int lifeP, int speedP = 0, int directP = 0) :
+        SuperObject(placeP, speedP, directP, iconP), life{ lifeP } {}
     virtual int collision_hanlder(SuperObject* obj)
     {
         if (typeid(obj) == typeid(Entity)) //EXAMPLE
@@ -87,6 +192,13 @@ public:
 
 int main()
 {
+    for (int i = 0; i < HIGH; i++)
+    {
+        for (int j = 0; j < WIDTH; j++)
+        {
+            display[i][j].coord(j, i);
+        }
+    };
     Entity player;
     player.link(&display[5][5]);
     player.icon = '@';
@@ -108,17 +220,24 @@ int main()
         keyboardPress = _getch();
         switch (keyboardPress)
         {
+            // объекты двигаются через direct. если direct=0 - объект стоит. 
+            // speed - это как модификатор передвижения, который показывает 
+            // расстояние передвижения за один такт. по умолчанию speed=1
         case 'w':
-            player.getCoord().y -= 1;
+            player.ismov = true;
+            player.direct = 1;
             break;
         case 'd':
-            player.getCoord().x += 1;
+            player.ismov = true;
+            player.direct = 2;
             break;
         case 's':
-            player.getCoord().y += 1;
+            player.ismov = true;
+            player.direct = 3;
             break;
         case 'a':
-            player.getCoord().x -= 1;
+            player.ismov = true;
+            player.direct = 4;
             break;
         case ' ':
             break;
@@ -139,18 +258,22 @@ int main()
 
         for (SuperObject* curObj : objects)
         {
-            if (curObj->speed != 0)
+            if (curObj->ismov)
             {
                 tempCoord = curObj->move();
                 //проверка на то, есть ли что-то в этой точке (into=nulptr - false - пустота)
-                if (display[tempCoord.y][tempCoord.x].into)
+                if ((tempCoord.y >= 0 && tempCoord.y < HIGH) and (tempCoord.x >= 0 && tempCoord.x < WIDTH))
                 {
-                    display[tempCoord.y][tempCoord.x].into->collision_hanlder(curObj);
-                    curObj->collision_hanlder(display[tempCoord.y][tempCoord.x].into);
-                }
-                else
-                {
-                    curObj->link(&display[tempCoord.y][tempCoord.x]);
+                    if (display[tempCoord.y][tempCoord.x].into)
+                    {
+                        display[tempCoord.y][tempCoord.x].into->collision_hanlder(curObj);
+                        curObj->collision_hanlder(display[tempCoord.y][tempCoord.x].into);
+                    }
+                    else
+                    {
+                        curObj->link(&display[tempCoord.y][tempCoord.x]);
+                        curObj->ismov = false;
+                    }
                 }
             }
         }

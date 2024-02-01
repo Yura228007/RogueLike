@@ -21,7 +21,7 @@
   <PropertyGroup Label="Globals">
     <VCProjectVersion>17.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>
-    <ProjectGuid>{a4f751e2-14fc-4c3f-ac2d-281c56f315fd}</ProjectGuid>
+    <ProjectGuid>{19a94c32-fbad-4143-9fc0-dd59e5093ae9}</ProjectGuid>
     <RootNamespace>RogueLike</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
@@ -127,16 +127,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="Coord.cpp" />
-    <ClCompile Include="Point.cpp" />
     <ClCompile Include="RogueLike.cpp" />
-    <ClCompile Include="Source.cpp" />
-    <ClCompile Include="SuperObject.cpp" />
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="Coord.h" />
-    <ClInclude Include="Point.h" />
-    <ClInclude Include="SuperObject.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
