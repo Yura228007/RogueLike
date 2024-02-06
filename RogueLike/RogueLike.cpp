@@ -2,6 +2,8 @@
 #include <windows.h>
 #include <list>
 #include <conio.h>
+#include <vector>
+
 using namespace std;
 char emptyChar = '.';
 
@@ -51,8 +53,8 @@ ostream& operator<<(ostream& out, Point& obj)
 
 class SuperObject
 {
-    Point* place;
 public:
+    Point* place;
     char icon;
     int speed{ 1 }; // квантификатор скорости
     bool ismov{ false }; // движется объект или нет
@@ -60,7 +62,8 @@ public:
     SuperObject() :
         place{ nullptr }, speed{ 0 }, direct{ 0 }, icon{ emptyChar } {}
     SuperObject(Point* placeP, int speedP = 0, int directP = 0, char iconP = emptyChar) :
-        speed{ speedP }, direct{ directP }, icon{ iconP } {
+        speed{ speedP }, direct{ directP }, icon{ iconP } 
+    {
         link(placeP);
     }
 
@@ -78,7 +81,6 @@ public:
     }
     virtual int collision_hanlder(SuperObject* obj)
     {
-
         return 0;
     };
     virtual Coord move() //возвращает координаты следующего местоположения. не меняет текущие параметры
@@ -154,26 +156,6 @@ void displayOut()
     }
 }
 
-
-class Entity : public SuperObject
-{
-public:
-    int life = 1;
-
-    Entity() : SuperObject() {}
-    Entity(Point* placeP, char iconP, int lifeP, int speedP = 0, int directP = 0) :
-        SuperObject(placeP, speedP, directP, iconP), life{ lifeP } {}
-    virtual int collision_hanlder(SuperObject* obj)
-    {
-        if (typeid(obj) == typeid(Entity)) //EXAMPLE
-        {
-            obj = dynamic_cast<Entity*>(obj);
-            life = 0;
-        }
-        return 1;
-    }
-};
-
 class Item : public SuperObject
 {
 public:
@@ -183,12 +165,90 @@ public:
     Item(Point* placeP, char iconP, int tempP, int speedP = 0, int directP = 0) :
         SuperObject(placeP, speedP, directP, iconP), temp{ tempP } {}
 
+    //virtual int collision_hanlder(SuperObject* obj)
+    //{
+    //    //your code here
+    //    return 1;
+    //}
+};
+
+class Case : public SuperObject
+{
+public:
+    vector <Item*> inventory;
+    Case() :SuperObject(), inventory{ 10 } {};
+    Case(Point* placeP, char iconP, int sizeInt, int speedP = 0) : SuperObject(placeP, iconP, speedP), inventory(sizeInt) {};
+};
+
+class Instrument : public Item
+{
+public:
+    int damage;
+    int life;
+    int ammo;
+    Instrument() : Item(), damage{ 1 }, life{ 5 }, ammo{ 10 } {}
+    Instrument(Point* placeP, char iconP, int tempP, int damageP, int lifeP, int ammoP, int speedP = 0, int directP = 0) :
+        Item(placeP, speedP, directP, iconP, tempP), damage{ damageP }, life{ lifeP }, ammo{ ammoP } {}
+};
+
+class Coin: public Item
+{
+public:
+    int volume;
+    Coin() : Item(), volume{ 1 } {}
+    Coin(Point* placeP, char iconP, int tempP, int volumeP, int speedP = 0, int directP = 0) :
+        Item(placeP, speedP, directP, iconP, tempP), volume{ volumeP } {}
+};
+
+class Entity : public SuperObject
+{
+public:
+    int life = 1;
+    vector <Item*> inventory;
+
+    Entity() : SuperObject(), inventory(1) {}
+    Entity(Point* placeP, char iconP, int lifeP, int speedP = 0, int directP = 0, int sizeInt = 1) :
+        SuperObject(placeP, speedP, directP, iconP), life{ lifeP }, inventory(sizeInt) {}
     virtual int collision_hanlder(SuperObject* obj)
     {
-        //your code here
+        if (typeid(obj) == typeid(Case)) //EXAMPLE
+        {
+            obj = dynamic_cast <Case*>(obj);
+            link(obj->place);
+            ismov = false;
+        }
         return 1;
     }
 };
+
+class Human : public Entity
+{
+public:
+    
+    Human() : Entity() {};
+    Human(Point* placeP, char iconP, int lifeP, int speedP = 0, int directP = 0, int sizeInt = 5) :
+        Entity(placeP, speedP, directP, iconP, lifeP, sizeInt) {}
+    //int collision_hanlder(SuperObject* obj)
+    //{
+    //    Entity::collision_hanlder(obj);
+    //}
+};
+
+class Monster : public Entity
+{
+public:
+    bool friendly;
+    Monster() : Entity(), friendly() {};
+    Monster(Point* placeP, char iconP, int lifeP, bool friendlyP, int speedP = 0, int directP = 0, int sizeInt = 2) :
+        Entity(placeP, speedP, directP, iconP, lifeP, sizeInt), friendly{friendlyP} {}
+    //int collision_hanlder(SuperObject* obj)
+    //{
+    //    Entity::collision_hanlder(obj);
+    //}
+};
+
+int enemyMoved[4] = {1,2,3,4};
+char animated[5] = { '.',',',';','\"' };
 
 int main()
 {
@@ -203,16 +263,18 @@ int main()
     player.link(&display[5][5]);
     player.icon = '@';
     player.life = 10;
-    Entity enemy(&display[5][7], '$', 15);
+    Monster enemy(&display[5][7], 'M', 15, false);
     Item sword(&display[3][3], '!', 2);
+    Case bag(&display[2][4], 'C', 10);
 
     //добавление объектов в список
     objects.push_back(&player);
     objects.push_back(&enemy);
     objects.push_back(&sword);
+    objects.push_back(&bag);
 
     Coord tempCoord(0, 0);
-
+    int i = 0;
     while (main_flag)
     {
         // -----------STEP 1: input-----------
@@ -248,16 +310,21 @@ int main()
 
         // environment motor
         // здесь будет логика всех объектов: 
-        // исполнение каких то паттернов движения, появление, применение свойств итд
+        // исполнение каких то паттернов движения, появление, применение свойств и тд
         // в общем все, что должно произойти за этот такт
 
-
+        if (i > 3) i = 0;
+        enemy.ismov = true;
+        enemy.direct = enemyMoved[i];
+        i++;
+        
 
         // ---------STEP 2: processing---------
         // здесь же примененные действия обрабатываются, в частности - в блоке коллизии
 
         for (SuperObject* curObj : objects)
         {
+            //здесь можно изменять CurObj->icon (сделать анимацию)
             if (curObj->ismov)
             {
                 tempCoord = curObj->move();
@@ -287,6 +354,6 @@ int main()
         // вывод сцены на экран
         displayOut();
         cout << keyboardPress << endl;
-        Sleep(latency);
+        //Sleep(latency);
     }
 }
