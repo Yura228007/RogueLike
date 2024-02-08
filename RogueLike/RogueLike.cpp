@@ -72,12 +72,24 @@ public:
         return &place->coord;
     }
 
-    virtual void link(Point* p)
+    /*virtual void link(Point* p)
     {
         if (place!= nullptr)
             place->into = nullptr;
         place = p;
         p->into = this;
+    }*/
+    virtual void link(Point* p)
+    {
+        if (place != nullptr)
+            place->into = nullptr;
+
+        if (p->into != nullptr) {}
+        else
+        {
+            place = p;
+            p->into = this;
+        }
     }
     virtual int collision_hanlder(SuperObject* obj)
     {
@@ -101,6 +113,7 @@ public:
             break;
         case(4):
             tcoord.x -= 1;
+            
             break;
         }
         return tcoord;
@@ -117,10 +130,15 @@ int fps = 4;
 int latency = 1000 / fps;
 
 Point display[HIGH][WIDTH]{};
-list<SuperObject*> objects;
+vector<SuperObject*> objects;
 
 char keyboardPress;
 bool main_flag = true;
+
+char heart = 3;
+bool usage = false;
+int usageThis = -1;
+string inventory_info;
 //===== env var =====
 void displayClearField()
 {
@@ -247,6 +265,37 @@ public:
     //}
 };
 
+class Player: public Entity
+{
+public:
+    Player() : Entity(){};
+    Player(Point* placeP, char iconP, int lifeP, int speedP = 0, int directP = 0, int sizeInt = 20) :
+        Entity(placeP, speedP, directP, iconP, lifeP, sizeInt) {}
+    virtual int collision_hanlder(SuperObject* obj)
+    {
+        Case* caseObj = dynamic_cast<Case*>(obj);
+        if (typeid(*obj) == typeid(Case))
+        {
+            if (caseObj) 
+            {
+                caseObj->icon = 'O';
+                link(caseObj->place);
+                link(this->place);
+                usage = true;
+            }
+            inventory_info = "";  // очищение предыдущего результата
+            for (int i = 0; i < caseObj->inventory.size(); i++) {
+                if (caseObj->inventory[i] != nullptr) inventory_info += string(1, caseObj->inventory[i]->icon) + "|";
+                else inventory_info += " |";
+            }
+            inventory_info += "\n";
+            cout << endl;
+        }
+        return 1;
+    }
+};
+
+
 int enemyMoved[4] = {1,2,3,4};
 char animated[5] = { '.',',',';','\"' };
 
@@ -259,13 +308,29 @@ int main()
             display[i][j].coord(j, i);
         }
     };
-    Entity player;
+    Player player;
     player.link(&display[5][5]);
     player.icon = '@';
     player.life = 10;
-    Monster enemy(&display[5][7], 'M', 15, false);
-    Item sword(&display[3][3], '!', 2);
-    Case bag(&display[2][4], 'C', 10);
+
+    //Monster enemy{ &display[5][7], 'M', 15, false };
+    Monster enemy;
+    enemy.link(&display[5][7]);
+    enemy.icon = 'M';
+    enemy.life = 15;
+    enemy.friendly = false;
+    //Item sword{&display[3][3], '!', 2 };
+    Instrument sword;
+    sword.link(&display[3][3]);
+    sword.icon = '!';
+    sword.temp = 8;
+    sword.damage = 10;
+    sword.ammo = 0;
+    Case bag;
+    bag.link(&display[8][9]);
+    bag.icon = 'B';
+    bag.inventory[0] = &sword;
+    bag.inventory[1] = &sword;
 
     //добавление объектов в список
     objects.push_back(&player);
@@ -277,9 +342,9 @@ int main()
     int i = 0;
     while (main_flag)
     {
+        keyboardPress = _getch();
         // -----------STEP 1: input-----------
         // keyboard reciver
-        keyboardPress = _getch();
         switch (keyboardPress)
         {
             // объекты двигаются через direct. если direct=0 - объект стоит. 
@@ -288,18 +353,22 @@ int main()
         case 'w':
             player.ismov = true;
             player.direct = 1;
+            player.icon = 30;
             break;
         case 'd':
             player.ismov = true;
             player.direct = 2;
+            player.icon = 16;
             break;
         case 's':
             player.ismov = true;
             player.direct = 3;
+            player.icon = 31;
             break;
         case 'a':
             player.ismov = true;
             player.direct = 4;
+            player.icon = 17;
             break;
         case ' ':
             break;
@@ -322,8 +391,9 @@ int main()
         // ---------STEP 2: processing---------
         // здесь же примененные действия обрабатываются, в частности - в блоке коллизии
 
-        for (SuperObject* curObj : objects)
+        for (int i = 0; i < objects.size(); i++)
         {
+            SuperObject* curObj = objects[i];
             //здесь можно изменять CurObj->icon (сделать анимацию)
             if (curObj->ismov)
             {
@@ -348,12 +418,23 @@ int main()
         // -----------STEP 3: output-----------
         // вывод сцены на экран
         // очистка сцены и наполнение ее
+        
         system("cls");
         displayFill();
         // добавление всех объектов на сцену
         // вывод сцены на экран
         displayOut();
-        cout << keyboardPress << endl;
-        //Sleep(latency);
+        cout << "Life: ";
+        for (int i = 0; i < player.life; i++) {
+            cout << heart;
+        }
+        cout << endl << "Inventory: ";
+        for (int i = 0; i < player.inventory.size(); i++) {
+            if (player.inventory[i] != nullptr) cout << player.inventory[i] << "|";
+            else  cout << " |";
+        }
+        cout << endl;
+        cout << inventory_info;
+        inventory_info = "";
     }
 }
