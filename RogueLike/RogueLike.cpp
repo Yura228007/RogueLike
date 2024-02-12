@@ -1,4 +1,4 @@
-﻿#include <iostream>
+#include <iostream>﻿
 #include <windows.h>
 #include <list>
 #include <conio.h>
@@ -62,7 +62,7 @@ public:
     SuperObject() :
         place{ nullptr }, speed{ 0 }, direct{ 0 }, icon{ emptyChar } {}
     SuperObject(Point* placeP, int speedP = 0, int directP = 0, char iconP = emptyChar) :
-        speed{ speedP }, direct{ directP }, icon{ iconP } 
+        speed{ speedP }, direct{ directP }, icon{ iconP }
     {
         link(placeP);
     }
@@ -113,7 +113,7 @@ public:
             break;
         case(4):
             tcoord.x -= 1;
-            
+
             break;
         }
         return tcoord;
@@ -194,22 +194,22 @@ class Case : public SuperObject
 {
 public:
     vector <Item*> inventory;
-    Case() :SuperObject(), inventory{ 10 } {};
-    Case(Point* placeP, char iconP, int sizeInt, int speedP = 0) : SuperObject(placeP, iconP, speedP), inventory(sizeInt) {};
+    Case() : SuperObject(), inventory { 10 } {};
+    Case(Point* placeP, char iconP, int sizeInt, int speedP = 0, int directP = 0) : SuperObject(placeP, speedP, directP, iconP), inventory(sizeInt) {};
 };
 
 class Instrument : public Item
 {
 public:
-    int damage;
+    int damagePlus;
     int life;
     int ammo;
-    Instrument() : Item(), damage{ 1 }, life{ 5 }, ammo{ 10 } {}
-    Instrument(Point* placeP, char iconP, int tempP, int damageP, int lifeP, int ammoP, int speedP = 0, int directP = 0) :
-        Item(placeP, speedP, directP, iconP, tempP), damage{ damageP }, life{ lifeP }, ammo{ ammoP } {}
+    Instrument() : Item(), damagePlus{ 1 }, life{ 5 }, ammo{ 10 } {}
+    Instrument(Point* placeP, char iconP, int tempP, int damagePlusP, int lifeP, int ammoP, int speedP = 0, int directP = 0) :
+        Item(placeP, iconP, tempP), damagePlus{ damagePlusP }, life{ lifeP }, ammo{ ammoP } {}
 };
 
-class Coin: public Item
+class Coin : public Item
 {
 public:
     int volume;
@@ -222,11 +222,12 @@ class Entity : public SuperObject
 {
 public:
     int life = 1;
+    int damage;
     vector <Item*> inventory;
 
-    Entity() : SuperObject(), inventory(1) {}
-    Entity(Point* placeP, char iconP, int lifeP, int speedP = 0, int directP = 0, int sizeInt = 1) :
-        SuperObject(placeP, speedP, directP, iconP), life{ lifeP }, inventory(sizeInt) {}
+    Entity() : SuperObject(), inventory(1), damage(1) {}
+    Entity(Point* placeP, char iconP, int lifeP, int damageP, int speedP = 0, int directP = 0, int sizeInt = 1) :
+        SuperObject(placeP, speedP, directP, iconP), life{ lifeP }, inventory(sizeInt), damage{ damageP } {}
     virtual int collision_hanlder(SuperObject* obj)
     {
         if (typeid(obj) == typeid(Case)) //EXAMPLE
@@ -242,10 +243,10 @@ public:
 class Human : public Entity
 {
 public:
-    
+
     Human() : Entity() {};
-    Human(Point* placeP, char iconP, int lifeP, int speedP = 0, int directP = 0, int sizeInt = 5) :
-        Entity(placeP, speedP, directP, iconP, lifeP, sizeInt) {}
+    Human(Point* placeP, char iconP, int lifeP, int damageP,int speedP = 0, int directP = 0, int sizeInt = 5) :
+        Entity(placeP, speedP, directP, iconP, lifeP, damageP, sizeInt) {}
     //int collision_hanlder(SuperObject* obj)
     //{
     //    Entity::collision_hanlder(obj);
@@ -257,26 +258,32 @@ class Monster : public Entity
 public:
     bool friendly;
     Monster() : Entity(), friendly() {};
-    Monster(Point* placeP, char iconP, int lifeP, bool friendlyP, int speedP = 0, int directP = 0, int sizeInt = 2) :
-        Entity(placeP, speedP, directP, iconP, lifeP, sizeInt), friendly{friendlyP} {}
-    //int collision_hanlder(SuperObject* obj)
-    //{
-    //    Entity::collision_hanlder(obj);
-    //}
+    Monster(Point* placeP, char iconP, int lifeP, int damageP, bool friendlyP, int speedP = 0, int directP = 0, int sizeInt = 2) :
+        Entity(placeP, iconP, lifeP, damageP, sizeInt), friendly{ friendlyP } {}
 };
 
-class Player: public Entity
+void deleting(SuperObject* obj) {
+    for (int i = 0; i < objects.size(); i++) {
+        if (objects[i] == obj) {
+            display[objects[i]->getCoord()->x][objects[i]->getCoord()->y].into = nullptr;
+            objects.erase(objects.cbegin() + i);
+            break;
+        }
+    }
+}
+
+class Player : public Entity
 {
 public:
-    Player() : Entity(){};
-    Player(Point* placeP, char iconP, int lifeP, int speedP = 0, int directP = 0, int sizeInt = 20) :
-        Entity(placeP, speedP, directP, iconP, lifeP, sizeInt) {}
+    Player() : Entity() {};
+    Player(Point* placeP, char iconP, int lifeP, int damageP, int speedP = 0, int directP = 0, int sizeInt = 20) :
+        Entity(placeP, iconP, lifeP, damageP, speedP, directP, sizeInt) {}
     virtual int collision_hanlder(SuperObject* obj)
     {
-        Case* caseObj = dynamic_cast<Case*>(obj);
         if (typeid(*obj) == typeid(Case))
         {
-            if (caseObj) 
+            Case* caseObj = dynamic_cast<Case*>(obj);
+            if (caseObj)
             {
                 caseObj->icon = 'O';
                 link(caseObj->place);
@@ -291,14 +298,25 @@ public:
             inventory_info += "\n";
             cout << endl;
         }
+        else if (typeid(*obj) == typeid(Instrument))
+        {
+            Instrument* instrumentObj = dynamic_cast<Instrument*>(obj);
+            for (int i = 0; i < this->inventory.size(); i++) {
+                if (this->inventory[i] == nullptr) {
+                    this->inventory[i] = instrumentObj;
+                    this->damage += instrumentObj->damagePlus;
+                    deleting(instrumentObj);
+                    break;
+                }
+            }
+        }
         return 1;
     }
 };
 
 
-int enemyMoved[4] = {1,2,3,4};
+int enemyMoved[4] = { 1,2,3,4 };
 char animated[5] = { '.',',',';','\"' };
-
 int main()
 {
     for (int i = 0; i < HIGH; i++)
@@ -308,27 +326,10 @@ int main()
             display[i][j].coord(j, i);
         }
     };
-    Player player;
-    player.link(&display[5][5]);
-    player.icon = '@';
-    player.life = 10;
-
-    //Monster enemy{ &display[5][7], 'M', 15, false };
-    Monster enemy;
-    enemy.link(&display[5][7]);
-    enemy.icon = 'M';
-    enemy.life = 15;
-    enemy.friendly = false;
-    //Item sword{&display[3][3], '!', 2 };
-    Instrument sword;
-    sword.link(&display[3][3]);
-    sword.icon = '!';
-    sword.temp = 8;
-    sword.damage = 10;
-    sword.ammo = 0;
-    Case bag;
-    bag.link(&display[8][9]);
-    bag.icon = 'B';
+    Player player(&display[5][5], '@', 10, 1);
+    Monster enemy(&display[5][7], 'M', 2, 1, true);
+    Instrument sword{ &display[3][3], '!', 2, 8, 2, 0 };
+    Case bag(&display[8][9], 'B', 10);
     bag.inventory[0] = &sword;
     bag.inventory[1] = &sword;
 
@@ -386,7 +387,7 @@ int main()
         enemy.ismov = true;
         enemy.direct = enemyMoved[i];
         i++;
-        
+
 
         // ---------STEP 2: processing---------
         // здесь же примененные действия обрабатываются, в частности - в блоке коллизии
@@ -418,7 +419,7 @@ int main()
         // -----------STEP 3: output-----------
         // вывод сцены на экран
         // очистка сцены и наполнение ее
-        
+
         system("cls");
         displayFill();
         // добавление всех объектов на сцену
@@ -428,13 +429,18 @@ int main()
         for (int i = 0; i < player.life; i++) {
             cout << heart;
         }
+        cout << endl << "Damage: " << player.damage;
         cout << endl << "Inventory: ";
         for (int i = 0; i < player.inventory.size(); i++) {
-            if (player.inventory[i] != nullptr) cout << player.inventory[i] << "|";
+            if (player.inventory[i] != nullptr) { cout << player.inventory[i]->icon << "|"; }
             else  cout << " |";
         }
         cout << endl;
         cout << inventory_info;
         inventory_info = "";
+
+        for (int i = 0; i < objects.size(); i++) {
+            cout << objects[i] << "\n";
+        }
     }
 }
