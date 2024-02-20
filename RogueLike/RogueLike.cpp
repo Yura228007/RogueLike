@@ -3,6 +3,7 @@
 #include <list>
 #include <conio.h>
 #include <vector>
+#include <random>
 
 using namespace std;
 char emptyChar = '.';
@@ -74,13 +75,6 @@ public:
         return &place->coord;
     }
 
-    /*virtual void link(Point* p)
-    {
-        if (place!= nullptr)
-            place->into = nullptr;
-        place = p;
-        p->into = this;
-    }*/
     virtual void link(Point* p)
     {
         if (place != nullptr)
@@ -125,7 +119,7 @@ public:
 //----- env var -----
 
 const int HIGH = 15;
-const int WIDTH = 10;
+const int WIDTH = 25;
 //char emptyChar = '.';
 
 int fps = 4;
@@ -138,7 +132,10 @@ char keyboardPress;
 bool main_flag = true;
 
 char heart = 3;
+char nothing = 219;
 string inventory_info;
+
+int circle_move[4] = { 1,2,3,4 };
 //===== env var =====
 void displayClearField()
 {
@@ -256,16 +253,26 @@ class Monster : public Entity
 {
 public:
     bool friendly;
-    Monster() : Entity(), friendly() {};
-    Monster(Point* placeP, char iconP, int lifeP, int damageP, bool friendlyP, int speedP = 0, int directP = 0, int sizeInt = 2) :
-        Entity(placeP, iconP, lifeP, damageP, sizeInt), friendly{ friendlyP } {}
+    int scorePlus;
+    Monster() : Entity(), friendly(false), scorePlus(0) {};
+    Monster(Point* placeP, char iconP, int lifeP, int damageP, bool friendlyP, int scorePlusP, int speedP = 0, int directP = 0, int sizeInt = 2) :
+        Entity(placeP, iconP, lifeP, damageP, sizeInt), friendly{ friendlyP }, scorePlus{ scorePlusP } {}
     virtual int collision_hanlder(SuperObject* obj);
 };
 
 void deleting(SuperObject* obj) {
     for (int i = 0; i < objects.size(); i++) {
         if (objects[i] == obj) {
-            display[objects[i]->getCoord()->x][objects[i]->getCoord()->y].into = nullptr;
+            display[objects[i]->getCoord()->y][objects[i]->getCoord()->x].into = nullptr;
+            objects.erase(objects.cbegin() + i);
+            break;
+        }
+    }
+}
+
+void stopObject(SuperObject* obj) {
+    for (int i = 0; i < objects.size(); i++) {
+        if (objects[i] == obj) {
             objects.erase(objects.cbegin() + i);
             break;
         }
@@ -275,9 +282,10 @@ void deleting(SuperObject* obj) {
 class Player : public Entity
 {
 public:
-    Player() : Entity() {};
-    Player(Point* placeP, char iconP, int lifeP, int damageP, int speedP = 0, int directP = 0, int sizeInt = 20) :
-        Entity(placeP, iconP, lifeP, damageP, speedP, directP, sizeInt) {}
+    int score;
+    Player() : Entity(), score(0) {};
+    Player(Point* placeP, char iconP, int lifeP, int damageP, int speedP = 0, int directP = 0, int sizeInt = 1) :
+        Entity(placeP, iconP, lifeP, damageP, speedP, directP, sizeInt), score(0) {}
     virtual int collision_hanlder(SuperObject* obj)
     {
         if (typeid(*obj) == typeid(Case))
@@ -302,14 +310,16 @@ public:
             for (int i = 0; i < this->inventory.size(); i++) {
                 if (this->inventory[i] == nullptr) {
                     this->inventory[i] = instrumentObj;
+                    this->damage += instrumentObj->damagePlus;                                       
+                    deleting(instrumentObj);
+                    break;
+                }
+                else if (typeid(*this->inventory[i]) == typeid(Instrument)) {
+                    Instrument* myObj = dynamic_cast<Instrument*>(inventory[i]);
+                    this->damage -= myObj->damagePlus;
+                    this->inventory[i] = instrumentObj;
                     this->damage += instrumentObj->damagePlus;
-                    for (int j = 0; j < objects.size(); j++) {  // Changed variable 'i' to 'j'
-                        if (objects[j] == instrumentObj) {
-                            display[objects[j]->getCoord()->x][objects[j]->getCoord()->y].into = nullptr;
-                            objects.erase(objects.cbegin() + j);
-                            break;
-                        }
-                    }
+                    deleting(instrumentObj);
                     break;
                 }
             }
@@ -322,8 +332,9 @@ public:
                 monsterObj->life -= this->damage;
                 if (monsterObj->life <= 0) {
                     monsterObj->ismov = false;
-                    deleting(monsterObj);
+                    stopObject(monsterObj);
                     monsterObj->icon = 197;
+                    this->score += monsterObj->scorePlus;
                 }                
             }
             else if (monsterObj->life <= 0) 
@@ -365,8 +376,10 @@ int main()
         }
     };
     Player player(&display[5][5], '@', 10, 1);
-    Monster enemy(&display[5][7], 'M', 2, 1, true);
-    Instrument pistol{ &display[7][6], 'S', 2, 20, 5, 20 };
+    Monster enemy(&display[5][9], 'M', 5, 2, false, 10);
+    Monster enemy2(&display[10][20], 'M', 5, 2, false, 10);
+    Monster enemy3(&display[9][9], 'M', 5, 2, false, 10);
+    Instrument pistol{ &display[2][3], 'S', 2, 20, 5, 20 };
     Instrument sword{ &display[3][3], '!', 2, 8, 2, 0 };
     Case bag(&display[8][9], 'B', 10);
     bag.inventory[0] = &sword;
@@ -375,12 +388,15 @@ int main()
     //добавление объектов в список
     objects.push_back(&player);
     objects.push_back(&enemy);
+    objects.push_back(&enemy2);
+    objects.push_back(&enemy3);
     objects.push_back(&pistol);
     objects.push_back(&sword); 
     objects.push_back(&bag);
 
     Coord tempCoord(0, 0);
     int i = 0;
+    cout << "Press any key to start";
     while (main_flag)
     {
         keyboardPress = _getch();
@@ -423,11 +439,48 @@ int main()
         // исполнение каких то паттернов движения, появление, применение свойств и тд
         // в общем все, что должно произойти за этот такт
 
-        if (i > 3) i = 0;
+        /*if (i > 3) i = 0;
         enemy.ismov = true;
         enemy.direct = enemyMoved[i];
-        i++;
+        i++;*/
+        
+        for (int i = 0; i < objects.size(); i++)
+        {
+            if (typeid(*objects[i]) == typeid(Monster)) 
+            {
+                Monster *monsterObj = dynamic_cast<Monster*>(objects[i]);
+                if (rand() % 3 > 0)
+                {
+                    monsterObj->ismov = true;
+                    if (abs(player.getCoord()->x - monsterObj->getCoord()->x) > abs(player.getCoord()->y - monsterObj->getCoord()->y))
+                    {
+                        if ((player.getCoord()->x - monsterObj->getCoord()->x) > 0)
+                        {
+                            monsterObj->direct = 2;
+                        }
+                        else
+                        {
+                            monsterObj->direct = 4;
+                        }
+                    }
+                    else
+                    {
+                        if ((player.getCoord()->y - monsterObj->getCoord()->y) > 0)
+                        {
+                            monsterObj->direct = 3;
+                        }
+                        else
+                        {
+                            monsterObj->direct = 1;
+                        }
+                    }
+                }
+            }
+        }
 
+        enemy3.direct = circle_move[i];
+        i++;
+        if (i == 4) i = 0;
 
         // ---------STEP 2: processing---------
         // здесь же примененные действия обрабатываются, в частности - в блоке коллизии
@@ -469,20 +522,25 @@ int main()
         for (int i = 0; i < player.life; i++) {
             cout << heart;
         }
+        cout << endl << "Score: " << player.score;
         cout << endl << "Damage: " << player.damage;
         cout << endl << "Inventory: ";
         for (int i = 0; i < player.inventory.size(); i++) {
             if (player.inventory[i] != nullptr) { cout << player.inventory[i]->icon << "|"; }
-            else  cout << " |";
+            else  cout << nothing <<"|";
         }
         cout << endl;
         cout << inventory_info;
         inventory_info = "";
 
-        cout << endl << enemy.life << endl;
+        //for (int i = 0; i < objects.size(); i++) {
+        //    cout << objects[i] << "\n";
+        //}
 
-        for (int i = 0; i < objects.size(); i++) {
-            cout << objects[i] << "\n";
+        if (player.life <= 0) {
+            main_flag = false;
+            system("cls");
+            cout << "You lose!";
         }
     }
 }
